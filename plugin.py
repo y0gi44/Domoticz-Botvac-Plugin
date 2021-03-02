@@ -24,11 +24,23 @@
 """
 import Domoticz
 from pybotvac import Robot
-from pybotvac import Account, Neato, PasswordSession
+from pybotvac import (
+    Account,
+    Neato,
+    OAuthSession,
+    PasswordlessSession,
+    PasswordSession,
+    Vorwerk,
+)
+import urllib3
+import json
+
+
+urllib3.disable_warnings()
 
 class BasePlugin:
     #enabled = False
-
+    myrobot = ''
     DEVICE_NAME = ''
     DEVICE_SERIAL = ''
     API_SECRET = ''
@@ -116,16 +128,24 @@ class BasePlugin:
 
     def onStart(self):
 
+        email = Parameters['Username']
+        client_id = "KY4YbVAvtgB7lp8vIbWQ7zLk3hssZlhR"
+
+        botvacSession = PasswordlessSession(client_id=client_id, vendor=Vorwerk())
+        json_string = "{ \"id_token\": \"%s\"} " % Parameters['Password']
+        botvacSession._token = json.loads(json_string)
+
         # List all robots associated with account
-        botvacSession = PasswordSession(email=Parameters['Username'], password=Parameters['Password'], vendor=Neato())
-        botvacAccount = Account(botvacSession).robots
-        botvacDevice = next((botvac for botvac in botvacAccount if botvac.name == Parameters["Mode3"]), None)
+        botvacAccount = Account(botvacSession)
+        botvacDevice = next((botvac for botvac in botvacAccount.robots if botvac.name == Parameters["Mode3"]), None)
+        
         if botvacDevice is None:
             Domoticz.Log("No robot found")
         else:
             self.DEVICE_NAME = botvacDevice.name
             self.DEVICE_SERIAL = botvacDevice.serial
             self.API_SECRET = botvacDevice.secret
+            self.myrobot = botvacDevice
 
         if Parameters["Mode4"] == "Debug":
             Domoticz.Debugging(1)
@@ -167,7 +187,8 @@ class BasePlugin:
 
     def onCommand(self, Unit, Command, Level, Hue):
         Domoticz.Log("onCommand called for Unit " + str(Unit) + ": Parameter '" + str(Command) + "', Level: " + str(Level))
-        robot = Robot(self.DEVICE_SERIAL, self.API_SECRET, self.DEVICE_NAME)
+        #robot = Robot(self.DEVICE_SERIAL, self.API_SECRET, self.DEVICE_NAME)
+        robot = self.myrobot
         response = robot.state
         state = response['state']
         action = response['action']
@@ -228,41 +249,46 @@ class BasePlugin:
             self.botvacGetValues()
 
     def botvacGetValues(self):
-        robot = Robot(self.DEVICE_SERIAL, self.API_SECRET, self.DEVICE_NAME)
-        response = robot.state
-        Domoticz.Debug(str(response))
-
-        isCharging = response['details']['isCharging']
-        isDocked = response['details']['isDocked']
-        isScheduleEnabled = response['details']['isScheduleEnabled']
-        charge = response['details']['charge']
-        state = response['state']
-        action = response['action']
-
-        device_on = 1 if state == 2 else 0
-        controleValue = 0
-
-        if state == 1: # Idle
-            if isDocked:
-                statusValue = self.actions.get(102) + " (" + str(charge) + "%)" if isCharging else self.actions.get(101) #Charging or Base
-            else:
-                statusValue = self.actions.get(100) #Stopped
-            controlValue = 20 if isDocked else 50 #Base or Stop
-
-        elif state == 2: #Busy
-            statusValue = self.actions.get(action)
-            if action in [1, 3, 11]: #House cleaning, Manual cleaning or Map cleaning
-                controlValue = 10 #Clean
-            elif action == 2: #Spot
-                controlValue = 30 #Spot
-
-        elif state in [3, 4]: #Pause or Error
-            statusValue = self.states.get(state)
-            controlValue = 40 if state == 3 else 50 #Pause or Stop
-
-        UpdateDevice(self.statusUnit, device_on, statusValue)
-        UpdateDevice(self.controlUnit, 1, controlValue)
-        UpdateDevice(self.scheduleUnit, int(isScheduleEnabled), '')
+        if (self.myrobot is None):
+            Domoticz.Log("No Robot")
+        else:
+            Domoticz.Log("Fetch and update robot state")
+            #robot = Robot(self.DEVICE_SERIAL, self.API_SECRET, self.DEVICE_NAME)
+            robot = self.myrobot
+            response = robot.state
+            Domoticz.Debug(str(response))
+    
+            isCharging = response['details']['isCharging']
+            isDocked = response['details']['isDocked']
+            isScheduleEnabled = response['details']['isScheduleEnabled']
+            charge = response['details']['charge']
+            state = response['state']
+            action = response['action']
+    
+            device_on = 1 if state == 2 else 0
+            controleValue = 0
+    
+            if state == 1: # Idle
+                if isDocked:
+                    statusValue = self.actions.get(102) + " (" + str(charge) + "%)" if isCharging else self.actions.get(101) #Charging or Base
+                else:
+                    statusValue = self.actions.get(100) #Stopped
+                controlValue = 20 if isDocked else 50 #Base or Stop
+    
+            elif state == 2: #Busy
+                statusValue = self.actions.get(action)
+                if action in [1, 3, 11]: #House cleaning, Manual cleaning or Map cleaning
+                    controlValue = 10 #Clean
+                elif action == 2: #Spot
+                    controlValue = 30 #Spot
+    
+            elif state in [3, 4]: #Pause or Error
+                statusValue = self.states.get(state)
+                controlValue = 40 if state == 3 else 50 #Pause or Stop
+    
+            UpdateDevice(self.statusUnit, device_on, statusValue)
+            UpdateDevice(self.controlUnit, 1, controlValue)
+            UpdateDevice(self.scheduleUnit, int(isScheduleEnabled), '')
 
     @property
     def isON(self):
