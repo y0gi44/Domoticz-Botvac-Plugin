@@ -270,22 +270,24 @@ class BasePlugin:
     
             if state == 1: # Idle
                 if isDocked:
-                    statusValue = self.actions.get(102) + " (" + str(charge) + "%)" if isCharging else self.actions.get(101) #Charging or Base
+                    statusValue = self.actions.get(102) if isCharging else self.actions.get(101) #Charging or Base
                 else:
                     statusValue = self.actions.get(100) #Stopped
                 controlValue = 20 if isDocked else 50 #Base or Stop
-    
+                statusValue = statusValue + " (" + str(charge) + "%)"
             elif state == 2: #Busy
                 statusValue = self.actions.get(action)
                 if action in [1, 3, 11]: #House cleaning, Manual cleaning or Map cleaning
                     controlValue = 10 #Clean
                 elif action == 2: #Spot
                     controlValue = 30 #Spot
-    
+                statusValue = statusValue + " (" + str(charge) + "%)"
+                
             elif state in [3, 4]: #Pause or Error
                 statusValue = self.states.get(state)
+                statusValue = statusValue + " (" + str(charge) + "%)"
                 controlValue = 40 if state == 3 else 50 #Pause or Stop
-    
+                
             UpdateDevice(self.statusUnit, device_on, statusValue)
             UpdateDevice(self.controlUnit, 1, controlValue)
             UpdateDevice(self.scheduleUnit, int(isScheduleEnabled), '')

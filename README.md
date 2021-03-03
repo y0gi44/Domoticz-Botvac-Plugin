@@ -1,7 +1,7 @@
 # Domoticz-Botvac-Plugin
- Domoticz Plugin for Botvac (Neato) Vacuum
+ Domoticz Plugin for Botvac (Neato or vorwerk) Vacuum
  
- *This plugin uses the [pybotvac](https://github.com/stianaske/pybotvac) library 0.0.19 or later*
+ *This plugin uses the [pybotvac](https://github.com/stianaske/pybotvac) library 0.0.20 or later*
 
 ## How it works
 
@@ -30,7 +30,7 @@ sudo pip3 install pybotvac urllib3 requests
 Then go to plugins folder and clone repository:
 ```
 cd domoticz/plugins
-git clone https://github.com/gilmrt/Domoticz-Botvac-Plugin.git
+git clone https://github.com/y0gi44/Domoticz-Botvac-Plugin.git
 ```
 
 **Only for Botvac D5 owners**
@@ -39,7 +39,25 @@ If you use persistent map for cleaning, please add this step so the cleaning wil
 *(Map is not detected by the pybotvac before Botvac D7 version)*
 ```
 git checkout BotvacD5
+
 ```
+**Only for vorwerk VR200/VR300 owners**
+
+If you use persistent map for cleaning, please add this step so the cleaning will the map
+*(Map is not detected by the pybotvac before Botvac D7 version)*
+```
+git checkout vorwerk
+```
+
+get your token_id 
+launch script to get your id using One time password
+
+```
+python3 ./initOtpVorwerk.py
+
+```
+copy the Id_Token and paste it on the *password* field of the page of the domoticz plugin 
+
 
 Restart the Domoticz service
 ```
@@ -74,7 +92,7 @@ pip3 install --upgrade pybotvac
 ```
 or update to selected version using:
 ```
-pip3 install --upgrade pybotvac==0.0.19
+pip3 install --upgrade pybotvac==0.0.20
 ```
 
 ## Screenshots
